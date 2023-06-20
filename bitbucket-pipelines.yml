@@ -1,0 +1,39 @@
+pipelines:
+    branches:
+      "staging":
+        - step: 
+            name: Build
+            image: node:18-alpine
+            script:
+              - npm install
+              - npm run build
+            artifacts:
+              - out/**
+        - step:
+            deployment: staging
+            name: Deploy
+            script:
+              - cd $BITBUCKET_CLONE_DIR
+              - pipe: atlassian/aws-s3-deploy:0.3.2
+                variables:
+                  AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+                  AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+                  AWS_DEFAULT_REGION: $AWS_DEFAULT_REGION
+                  S3_BUCKET: $AWS_S3_BUCKET
+                  LOCAL_PATH: '$BITBUCKET_CLONE_DIR/out'
+  
+              - pipe: atlassian/slack-notify:2.0.0
+                variables:
+                  WEBHOOK_URL: $WEBHOOK_URL
+                  MESSAGE: "[<https://bitbucket.org/${BITBUCKET_REPO_FULL_NAME}|${BITBUCKET_REPO_FULL_NAME}>][staging] Deployment has been successful! :white_check_mark:"
+        # - step: 
+        #       name: Cloudfront Invalidation
+        #       script:
+              # - pipe: atlassian/aws-cloudfront-invalidate:0.1.2
+              #   variables:
+              #     AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+              #     AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+              #     AWS_DEFAULT_REGION: $AWS_DEFAULT_REGION
+              #     DISTRIBUTION_ID: $CLOUDFRONT_DISTRIBUTION_ID
+              #     PATHS: '/*'
+  
